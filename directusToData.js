@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 const { writeFile, readFileSync, existsSync } = require("fs");
 const { env } = require("process");
 
@@ -70,4 +71,8 @@ module.exports = async function({
     directus.request(readItems(collectionName)).then((data) => {
         writeFile(outputFilename, JSON.stringify(data), { encoding: encoding }, _handleError);
     }).catch((err) => {console.error(err)});
+}
+
+if (require.main == module) {
+    module.exports({});
 }
