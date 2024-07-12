@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-const { writeFile, readFileSync, existsSync } = require("fs");
+const { writeFileSync, readFileSync, existsSync, mkdirSync } = require("fs");
+const { dirname } = require("path");
 const { env } = require("process");
 
 function _handleError(err) { if (err) { console.error(err); };}
@@ -31,48 +32,71 @@ function _handleError(err) { if (err) { console.error(err); };}
  * env.STATIC_TOKEN
  * env.COLLECTION_NAME
  * env.OUTPUT_FILENAME
+ * env.CONFIG_FILENAME
+ * env.ENCODING
  * 
- * @param cmsUrl url of your Directus instance
- * @param staticTokenValue static token for user login
+ * @param cmsUrl url of your Directus instance. Example value: https://cms.example.com
+ * @param staticToken static token for user login
  * @param collectionName name of the collection you want to save locally
  * @param outputFilename where to save the JSON file.
  *                       you can use the {{collectionName}} template string value,
  *                       which will be replaced with the passed collection name
- * @default src/_data/{{collectionName}}.json
- * @param configFilename where the directus-to-date.json
+ * @default {{collectionName}}.json
+ * @param configFilename path towards directus-to-data's json config
  * @default .directus.json
- * @param encoding which encoding to use when reading/writing
+ * @param encoding which encoding to use when reading/writing. Passed directly to Node.js' fs functions
  * @default utf-8
  * @param directusSdk optionally, pass your own instance of @directus/sdk
  */
 module.exports = async function({
     cmsUrl="", 
-    staticTokenValue="", 
+    staticToken="", 
     collectionName="", 
-    outputFilename="src/_data/{{collectionName}}.json", 
-    configFilename=".directus.json",
-    encoding="utf-8",
+    outputFilename="",
+    configFilename="",
+    encoding="",
     directusSdk=require("@directus/sdk")
 }) {
-    const { createDirectus, rest, readItems, staticToken } = directusSdk;
+    const { createDirectus, rest, readItems, staticToken: staticTokenAuth } = directusSdk;
+    
     let config = {}
+    configFilename = configFilename || env.CONFIG_FILENAME || ".directus.json";
+
     if (existsSync(configFilename)) {
         config = JSON.parse(readFileSync(configFilename, {encoding: encoding}));
     }
     cmsUrl = cmsUrl || config["cmsUrl"] || env.CMS_URL;
-    staticTokenValue = staticTokenValue || config["staticTokenValue"] || config["staticToken"] || env.STATIC_TOKEN;
+    staticToken = staticToken || config["staticToken"] || env.STATIC_TOKEN;
     collectionName = collectionName || config["collectionName"] || env.COLLECTION_NAME;
-    outputFilename = outputFilename || config["outputFilename"]  || env.OUTPUT_FILENAME;
+    outputFilename = outputFilename || config["outputFilename"]  || env.OUTPUT_FILENAME || "{{collectionName}}.json";
+    encoding = encoding || config["encoding"] || env.ENCODING || "utf-8";
 
     outputFilename = outputFilename.replace("{{collectionName}}", collectionName);
 
-    const directus = createDirectus(cmsUrl).with(staticToken(staticTokenValue)).with(rest());
+    const directus = createDirectus(cmsUrl).with(staticTokenAuth(staticToken)).with(rest());
 
     directus.request(readItems(collectionName)).then((data) => {
-        writeFile(outputFilename, JSON.stringify(data), { encoding: encoding }, _handleError);
+        mkdirSync(dirname(outputFilename), {recursive: true});
+        writeFileSync(outputFilename, JSON.stringify(data), { encoding: encoding }, _handleError);
     }).catch((err) => {console.error(err)});
 }
 
 if (require.main == module) {
-    module.exports({});
+    const { program } = require("commander");
+    program
+        .name("directus-to-data")
+        .description("A minimal utility to save a specific Collection from Directus into a local JSON file!")
+        .version("0.2.0")
+        .option("-u, --cms-url <url>", "url of your Directus instance. Example value: https://cms.example.com")
+        .option("-t, --static-token <token>", "static token for user login")
+        .option("-c, --collection-name, --collection <name>", "name of the collection you want to save locally")
+        .option("-o, --output-filename <filename>, --output <filename>",
+                "where to save the JSON file. you can use the {{collectionName}} template string value, which will be replaced with the passed collection name (default: '{{collectionName}}.json')")
+        .option("-e, --encoding <encoding>", "which encoding to use when reading/writing. Passed directly to Node.js' fs functions (default: 'utf-8')")
+        .option("-i, --config-filename, --config <filename>", "path towards directus-to-data's json config")
+        .action((options) => {
+            module.exports(options);
+        });
+
+    program.parse();
 }

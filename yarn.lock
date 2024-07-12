@@ -13,3 +13,8 @@
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/@directus/system-data/-/system-data-1.1.0.tgz#0c9583a5220b3c0f3ecc7aba51eddee9875b805b"
   integrity sha512-ETOoTyUXHQJD1NemdlJSADm32GoljQGhZUbg8bB31GAmBnGghTx+E16zzcb1TxRHEqQhV7PfLOrtwEksSTIw8Q==
+
+commander@^12.1.0:
+  version "12.1.0"
+  resolved "https://registry.yarnpkg.com/commander/-/commander-12.1.0.tgz#01423b36f501259fdaac4d0e4d60c96c991585d3"
+  integrity sha512-Vw8qHK3bZM9y/P10u3Vib8o/DdkvA2OtPtZvD871QKjy74Wj1WSKFILMPRPSdUSx5RFK1arlJzEtA4PkFgnbuA==
