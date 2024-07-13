@@ -36,6 +36,56 @@ module.exports = function (eleventyConfig) {
 You can alternatively configure `directus-to-data` using environment variables
 or a config file. See [Reference - Options](#options) or [directusToData.js](directusToData.js) for further documentation.
 
+### CI Integration example
+The following file can be used in combination with Directus Flow's webhook/request url integration for an automatically updating website.
+See [GitHub API - Create a workflow dispatch event](https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event)
+
+```yml
+# .github/workflows/directus.yml
+name: Update data from Directus webhook
+on:
+  workflow_dispatch:  # Manual run
+concurrency:  # If multiple builds are going, keep most recent
+  group: directus
+  cancel-in-progress: true
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - name: Install directus-to-data
+        run: yarn add directus-to-data
+      - name: Fetch data
+        run: npx directus-to-data
+        env:
+          CMS_URL: ${{ secrets.CMS_URL }}
+          COLLECTION_NAME: MyCollection
+          STATIC_TOKEN: ${{ secrets.STATIC_TOKEN }}
+          OUTPUT_FILENAME: src/_data/{{collectionName}}.json
+      - uses: EndBug/add-and-commit@v9
+        with:
+          add: 'src/_data/*'  # git add
+          default_author: github_actions  # Commit as github-actions bot
+          message: 'CMS update (${{ github.event.repository.updated_at}})'
+
+  # Example with a local GitHub Pages deploy workflow
+  # Make sure it has the following configuration so it can be called from a different workflow
+  #   on:
+  #     workflow_call:
+  deploy:
+    uses: ./.github/workflows/deploy.yml
+    needs: update-data
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    secrets: inherit  # Pass secrets to called workflow
+```
+
 ## Reference
 ### Options
 | Description | Function/`.directus.json` parameter | CLI option            | env var    | default value | example value           |
