@@ -40,12 +40,14 @@ function _handleError(err) { if (err) { console.error(err); };}
  * @param collectionName name of the collection you want to save locally
  * @param outputFilename where to save the JSON file.
  *                       you can use the {{collectionName}} template string value,
- *                       which will be replaced with the passed collection name
+ *                       which will be replaced with the passed collection name.
+ *                       optionally, set it to an empty string ("") to disable writing to disk
  * @default {{collectionName}}.json
  * @param configFilename path towards directus-to-data's json config
  * @default .directus.json
  * @param encoding which encoding to use when reading/writing. Passed directly to Node.js' fs functions
  * @default utf-8
+ * @param callback optionally, pass a callback function. It will be invoked with callback(data)
  * @param directusSdk optionally, pass your own instance of @directus/sdk
  */
 module.exports = async function({
@@ -55,6 +57,7 @@ module.exports = async function({
     outputFilename="",
     configFilename="",
     encoding="",
+    callback=function(data){},
     directusSdk=require("@directus/sdk")
 }) {
     const { createDirectus, rest, readItems, staticToken: staticTokenAuth } = directusSdk;
@@ -77,7 +80,10 @@ module.exports = async function({
 
     directus.request(readItems(collectionName)).then((data) => {
         mkdirSync(dirname(outputFilename), {recursive: true});
-        writeFileSync(outputFilename, JSON.stringify(data), { encoding: encoding }, _handleError);
+        if (outputFilename != "") {
+            writeFileSync(outputFilename, JSON.stringify(data), { encoding: encoding }, _handleError);
+        }
+        callback(data);
     }).catch((err) => {console.error(err)});
 }
 

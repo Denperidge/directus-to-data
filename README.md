@@ -93,10 +93,11 @@ jobs:
 | url of your Directus instance | `cmsUrl`                            | `-u, --cms-url <url>` |  `CMS_URL` | Not set       | https://cms.example.com |
 | static token for user login | `staticToken`       | `-t, --static-token <token>` | `STATIC_TOKEN` | Not set | DAE_DOJ?1-edOJQHDS |
 | name of the collection you want to save locally | `collectionName` | `-c, --collection-name, --collection <name>` | `COLLECTION_NAME` | Not set | MyCollection |
-| where to save the JSON file. you can use the `{{collectionName}}` template string value, which will be replaced with the passed collection name | `outputFilename` | `-o, --output-filename, --output <filename>` | `OUTPUT_FILENAME` | {{collectionName}}.json | src/_data/{{collectionName}}.json |
+| where to save the JSON file. you can use the `{{collectionName}}` template string value, which will be replaced with the passed collection name. Optionally, set it to an empty string (`""`) to disable writing to disk | `outputFilename` | `-o, --output-filename, --output <filename>` | `OUTPUT_FILENAME` | {{collectionName}}.json | src/_data/{{collectionName}}.json |
 | which encoding to use when reading/writing. Passed directly to Node.js' fs functions | `encoding` | `-e, --encoding <encoding>` | `ENCODING` | utf-8 | ascii |
 | path towards directus-to-data's json config | `configFilename`* | `-i, --config-filename, --config <filename>` | `CONFIG_FILENAME` | .directus.json | ../directus-to-data.json |
-| directusSdk | `directusSdk`* | N/A | N/A | `require("@directus/sdk")` | `customDirectusSdkInstance` |
+| Optionally, pass a callback function. It will be invoked with callback(data) | `callback`* | N/A | N/A | `function(data){}` | `function(data) { console.log(data); }` |
+| Optionally, pass your own instance of @directus/sdk | `directusSdk`* | N/A | N/A | `require("@directus/sdk")` | `customDirectusSdkInstance` |
 
 *: Does **not** support .directus.json
 
