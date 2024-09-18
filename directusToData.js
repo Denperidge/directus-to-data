@@ -37,7 +37,8 @@ function _handleError(err) { if (err) { console.error(err); };}
  * 
  * @param cmsUrl url of your Directus instance. Example value: https://cms.example.com
  * @param staticToken static token for user login
- * @param collectionName name of the collection you want to save locally
+ * @param collectionName name(s) of the collection(s) you want to save locally.
+ *                       can be passed as string, array or a JSON array string
  * @param outputFilename where to save the JSON file.
  *                       you can use the {{collectionName}} template string value,
  *                       which will be replaced with the passed collection name.
@@ -74,17 +75,35 @@ module.exports = async function({
     outputFilename = outputFilename || config["outputFilename"]  || env.OUTPUT_FILENAME || "{{collectionName}}.json";
     encoding = encoding || config["encoding"] || env.ENCODING || "utf-8";
 
-    outputFilename = outputFilename.replace("{{collectionName}}", collectionName);
+    let collectionNameArray = [];
+
+
+    if (collectionName.constructor === Array) {
+        collectionNameArray = collectionName;
+    } else {
+        try {
+            const jsonParsedCollectionName = JSON.parse(jsonParsedCollectionName)
+            if (jsonParsedCollectionName.constructor === Array) {
+                collectionNameArray = jsonParsedCollectionName;
+            }
+        } catch (e) {}
+    } 
+    // If it couldn't be parsed as JSON and wasn't an array, assume string
+    collectionNameArray = collectionNameArray.length > 0 ? collectionNameArray : [collectionName];
 
     const directus = createDirectus(cmsUrl).with(staticTokenAuth(staticToken)).with(rest());
+    
+    collectionNameArray.forEach((collectionName) => {
+        const finalOutputFilename = outputFilename.replace("{{collectionName}}", collectionName);
 
-    directus.request(readItems(collectionName)).then((data) => {
-        mkdirSync(dirname(outputFilename), {recursive: true});
-        if (outputFilename != "") {
-            writeFileSync(outputFilename, JSON.stringify(data), { encoding: encoding }, _handleError);
-        }
-        callback(data);
-    }).catch((err) => {console.error(err)});
+        directus.request(readItems(collectionName)).then((data) => {    
+            mkdirSync(dirname(finalOutputFilename), {recursive: true});
+            if (finalOutputFilename != "") {
+                writeFileSync(finalOutputFilename, JSON.stringify(data), { encoding: encoding }, _handleError);
+            }
+            callback(data);
+        }).catch((err) => {console.error(err)});
+    });
 }
 
 if (require.main == module) {
