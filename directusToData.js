@@ -58,10 +58,11 @@ module.exports = async function({
     outputFilename="",
     configFilename="",
     encoding="",
+    backupSchema=false,
     callback=function(data){},
     directusSdk=require("@directus/sdk")
 }) {
-    const { createDirectus, rest, readItems, staticToken: staticTokenAuth } = directusSdk;
+    const { createDirectus, rest, readItems, schemaSnapshot, staticToken: staticTokenAuth } = directusSdk;
     
     let config = {}
     configFilename = configFilename || env.CONFIG_FILENAME || ".directus.json";
@@ -74,6 +75,7 @@ module.exports = async function({
     collectionName = collectionName || config["collectionName"] || env.COLLECTION_NAME;
     outputFilename = outputFilename || config["outputFilename"]  || env.OUTPUT_FILENAME || "{{collectionName}}.json";
     encoding = encoding || config["encoding"] || env.ENCODING || "utf-8";
+    backupSchema = backupSchema || config["backupSchema"] || env.BACKUP_SCHEMA || false;
 
     let collectionNameArray = [];
 
@@ -92,9 +94,22 @@ module.exports = async function({
     collectionNameArray = collectionNameArray.length > 0 ? collectionNameArray : [collectionName];
 
     const directus = createDirectus(cmsUrl).with(staticTokenAuth(staticToken)).with(rest());
+
+    if (backupSchema) {
+        directus.request(schemaSnapshot()).then((schema) => {
+            ["collections", "fields", "relations"].forEach(keyToFilter => {
+                schema[keyToFilter] = schema[keyToFilter].filter((entry) => collectionNameArray.includes(entry.collection))
+            })
+            
+            writeFileSync("test.json", JSON.stringify(schema), {encoding: "utf-8"})
+        }).catch((err) => { console.error(err); })
+
+    }
     
     collectionNameArray.forEach((collectionName) => {
         const finalOutputFilename = outputFilename.replace("{{collectionName}}", collectionName);
+
+        
 
         directus.request(readItems(collectionName)).then((data) => {    
             mkdirSync(dirname(finalOutputFilename), {recursive: true});
