@@ -60,6 +60,7 @@ module.exports = async function({
     encoding="",
     backupSchema="",
     restoreSchema="",
+    apply=false,
     callback=function(data){},
     directusSdk=require("@directus/sdk")
 }) {
@@ -78,6 +79,7 @@ module.exports = async function({
     encoding = encoding || config["encoding"] || env.ENCODING || "utf-8";
     backupSchema = backupSchema || config["backupSchema"] || env.BACKUP_SCHEMA || false;
     restoreSchema = restoreSchema || config["restoreSchema"] || env.RESTORE_SCHEMA || null;
+    apply = apply || config["apply"] || env.APPLY || false;
 
     if (!collectionName) {
         console.error("ERROR: directus-to-data requires at least one collection name to be defined");
@@ -110,7 +112,6 @@ module.exports = async function({
         keysToFilter.forEach(keyToFilter => {
             schemaDiffData.diff[keyToFilter] = schemaDiffData.diff[keyToFilter].filter((entry) => collectionNameArray.includes(entry.collection))
         })
-        //console.dir(schemaDiffData, {depth: null});
 
         keysToFilter.forEach((keyToFilter) => {
             schemaDiffData.diff[keyToFilter].forEach((entry) => {
@@ -157,7 +158,9 @@ module.exports = async function({
                 
             })
         })
-        //directus.request(schemaApply(data)) 
+        if (apply) {
+            console.log(await directus.request(schemaApply(schemaDiffData)))
+        }
         return;
     }
 
@@ -204,7 +207,8 @@ if (require.main == module) {
                 "where to save the JSON file. you can use the {{collectionName}} template string value, which will be replaced with the passed collection name (default: '{{collectionName}}.json')")
         .option("-e, --encoding <encoding>", "which encoding to use when reading/writing. Passed directly to Node.js' fs functions (default: 'utf-8')")
         .option("-i, --config-filename, --config <filename>", "path towards directus-to-data's json config")
-        .option("-r, --restore-schema <filename>", "path towards schema you want to apply the CMS url. This overrides default behaviour")
+        .option("-r, --restore-schema <filename>", "path towards schema you want to apply to the CMS. This overrides default behaviour. This command ignores collections not defined using --collection")
+        .option("-a, --apply", "for use with --restore-schema/-r. Apply the schema differences to the CMS instead of only viewing the diff")
         .action((options) => {
             module.exports(options);
         });
