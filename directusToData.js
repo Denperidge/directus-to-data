@@ -48,6 +48,12 @@ function _handleError(err) { if (err) { console.error(err); };}
  * @default .directus.json
  * @param encoding which encoding to use when reading/writing. Passed directly to Node.js' fs functions
  * @default utf-8
+ * @param backupSchema path towards file you want to store the collections' schema to. This command ignores collections whose names were not passed
+ * @default null
+ * @param restoreSchema path towards schema you want to apply to the CMS. This overrides default behaviour. This command ignores collections whose names were not passed
+ * @default null
+ * @param applySchema for use with --restore-schema/-r. Apply the schema differences to the CMS instead of only displaying the differences
+ * @default false
  * @param callback optionally, pass a callback function. It will be invoked with callback(data)
  * @param directusSdk optionally, pass your own instance of @directus/sdk
  */
@@ -60,7 +66,7 @@ module.exports = async function({
     encoding="",
     backupSchema="",
     restoreSchema="",
-    apply=false,
+    applySchema=false,
     callback=function(data){},
     directusSdk=require("@directus/sdk")
 }) {
@@ -77,9 +83,9 @@ module.exports = async function({
     collectionName = collectionName || config["collectionName"] || env.COLLECTION_NAME;
     outputFilename = outputFilename || config["outputFilename"]  || env.OUTPUT_FILENAME || "{{collectionName}}.json";
     encoding = encoding || config["encoding"] || env.ENCODING || "utf-8";
-    backupSchema = backupSchema || config["backupSchema"] || env.BACKUP_SCHEMA || false;
+    backupSchema = backupSchema || config["backupSchema"] || env.BACKUP_SCHEMA || null;
     restoreSchema = restoreSchema || config["restoreSchema"] || env.RESTORE_SCHEMA || null;
-    apply = apply || config["apply"] || env.APPLY || false;
+    applySchema = applySchema || config["applySchema"] || env.APPLY_SCHEMA || false;
 
     if (!collectionName) {
         console.error("ERROR: directus-to-data requires at least one collection name to be defined");
@@ -158,7 +164,7 @@ module.exports = async function({
                 
             })
         })
-        if (apply) {
+        if (applySchema) {
             console.log(await directus.request(schemaApply(schemaDiffData)))
         }
         return;
@@ -190,16 +196,12 @@ module.exports = async function({
     });
 }
 
-function restoreSchema(filename, apply=false) {
-    
-}
-
 if (require.main == module) {
     const { program } = require("commander");
     program
         .name("directus-to-data")
         .description("A minimal utility to save a specific Collection from Directus into a local JSON file!")
-        .version("0.2.0")
+        .version("0.5.0")
         .option("-u, --cms-url <url>", "url of your Directus instance. Example value: https://cms.example.com")
         .option("-t, --static-token <token>", "static token for user login")
         .option("-c, --collection-name, --collection <name...>", "name of the collection you want to save locally")
@@ -207,8 +209,9 @@ if (require.main == module) {
                 "where to save the JSON file. you can use the {{collectionName}} template string value, which will be replaced with the passed collection name (default: '{{collectionName}}.json')")
         .option("-e, --encoding <encoding>", "which encoding to use when reading/writing. Passed directly to Node.js' fs functions (default: 'utf-8')")
         .option("-i, --config-filename, --config <filename>", "path towards directus-to-data's json config")
-        .option("-r, --restore-schema <filename>", "path towards schema you want to apply to the CMS. This overrides default behaviour. This command ignores collections not defined using --collection")
-        .option("-a, --apply", "for use with --restore-schema/-r. Apply the schema differences to the CMS instead of only viewing the diff")
+        .option("-b, --backup-schema <filename>", "path towards file you want to store the collections' schema to. This command ignores collections whose names were not passed")
+        .option("-r, --restore-schema <filename>", "path towards schema you want to apply to the CMS. This overrides default behaviour. This command ignores collections whose names were not passed")
+        .option("-a, --apply", "--apply-schema", "for use with --restore-schema/-r. Apply the schema differences to the CMS instead of only displaying the differences")
         .action((options) => {
             module.exports(options);
         });
