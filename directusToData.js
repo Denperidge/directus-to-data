@@ -68,11 +68,8 @@ module.exports = async function({
     let config = {}
     configFilename = configFilename || env.CONFIG_FILENAME || ".directus.json";
 
-    console.log(configFilename)
-
     if (existsSync(configFilename)) {
         config = JSON.parse(readFileSync(configFilename, {encoding: encoding}));
-        console.log(config)
     }
     cmsUrl = cmsUrl || config["cmsUrl"] || env.CMS_URL;
     staticToken = staticToken || config["staticToken"] || env.STATIC_TOKEN;
@@ -82,23 +79,24 @@ module.exports = async function({
     backupSchema = backupSchema || config["backupSchema"] || env.BACKUP_SCHEMA || false;
     restoreSchema = restoreSchema || config["restoreSchema"] || env.RESTORE_SCHEMA || null;
 
-    let collectionNameArray = [];
-
-
-    if (collectionName && !restoreSchema) {
-        if (collectionName.constructor === Array) {
-            collectionNameArray = collectionName;
-        } else {
-            try {
-                const jsonParsedCollectionName = JSON.parse(jsonParsedCollectionName)
-                if (jsonParsedCollectionName.constructor === Array) {
-                    collectionNameArray = jsonParsedCollectionName;
-                }
-            } catch (e) {}
-        } 
-        // If it couldn't be parsed as JSON and wasn't an array, assume string
-        collectionNameArray = collectionNameArray.length > 0 ? collectionNameArray : [collectionName];    
+    if (!collectionName) {
+        console.error("ERROR: directus-to-data requires at least one collection name to be defined");
+        return;
     }
+
+    let collectionNameArray = [];
+    if (collectionName.constructor === Array) {
+        collectionNameArray = collectionName;
+    } else {
+        try {
+            const jsonParsedCollectionName = JSON.parse(jsonParsedCollectionName)
+            if (jsonParsedCollectionName.constructor === Array) {
+                collectionNameArray = jsonParsedCollectionName;
+            }
+        } catch (e) {}
+    } 
+    // If it couldn't be parsed as JSON and wasn't an array, assume string
+    collectionNameArray = collectionNameArray.length > 0 ? collectionNameArray : [collectionName];    
     
     const directus = createDirectus(cmsUrl).with(staticTokenAuth(staticToken)).with(rest());
 
@@ -108,28 +106,53 @@ module.exports = async function({
 
         const keysToFilter = ["collections", "fields", "relations"]
         
+        // Only keep changes for selected collections
         keysToFilter.forEach(keyToFilter => {
-            //schemaDiffData.diff[keyToFilter] = schemaDiffData.diff[keyToFilter].filter((entry) => collectionNameArray.includes(entry.collection))
+            schemaDiffData.diff[keyToFilter] = schemaDiffData.diff[keyToFilter].filter((entry) => collectionNameArray.includes(entry.collection))
         })
         //console.dir(schemaDiffData, {depth: null});
 
         keysToFilter.forEach((keyToFilter) => {
-            console.log("@@@")
             schemaDiffData.diff[keyToFilter].forEach((entry) => {
+                console.log(`--- ${entry.collection} ---`);
                 entry.diff.forEach(difference => {
                     let kind = "";
                     switch (difference.kind) {
                         case "N":
-                            kind = "New";
+                            kind = "NEW";
+                            break;
+                        case "E":
+                            kind = "EDIT"
                             break;
                         case "D":
-                            kind = "Delete";
+                            kind = "DELETE";
                             break;
                         default:
                             kind = `Unknown (${difference.kind})`
                             break;
                     }
-                    console.log(`${kind}: ${entry.collection}`)
+                    console.log(kind);
+                    Object.keys(difference).forEach((key) => {
+                        let keyTitle;
+                        switch(key) {
+                            case "kind":
+                                // kind has already been displayed above
+                                return;
+                            case "path":
+                                keyTitle = "path";
+                                break;
+                            case "lhs":
+                                keyTitle = "Old value (lhs)";
+                                break;
+                            case "rhs":
+                                keyTitle = "New value (rhs)";
+                                break;
+                            default:
+                                keyTitle = key;
+                                break;
+                        }
+                        console.log(`${keyTitle}: ${JSON.stringify(difference[key])}`)
+                    })
                 })
                 
             })
@@ -176,7 +199,7 @@ if (require.main == module) {
         .version("0.2.0")
         .option("-u, --cms-url <url>", "url of your Directus instance. Example value: https://cms.example.com")
         .option("-t, --static-token <token>", "static token for user login")
-        .option("-c, --collection-name, --collection <name>", "name of the collection you want to save locally")
+        .option("-c, --collection-name, --collection <name...>", "name of the collection you want to save locally")
         .option("-o, --output-filename <filename>, --output <filename>",
                 "where to save the JSON file. you can use the {{collectionName}} template string value, which will be replaced with the passed collection name (default: '{{collectionName}}.json')")
         .option("-e, --encoding <encoding>", "which encoding to use when reading/writing. Passed directly to Node.js' fs functions (default: 'utf-8')")
