@@ -63,7 +63,7 @@ module.exports = async function({
     callback=function(data){},
     directusSdk=require("@directus/sdk")
 }) {
-    const { createDirectus, rest, readItems, schemaSnapshot, schemaDiff, staticToken: staticTokenAuth } = directusSdk;
+    const { createDirectus, rest, readItems, schemaSnapshot, schemaDiff, schemaApply, staticToken: staticTokenAuth } = directusSdk;
     
     let config = {}
     configFilename = configFilename || env.CONFIG_FILENAME || ".directus.json";
@@ -104,8 +104,37 @@ module.exports = async function({
 
     if (restoreSchema) {
         const schemaSnapshot = JSON.parse(readFileSync(restoreSchema, {encoding: encoding}))
-        const data = await directus.request(schemaDiff(schemaSnapshot));
-        console.dir(data, {depth: null})
+        const schemaDiffData = await directus.request(schemaDiff(schemaSnapshot));
+
+        const keysToFilter = ["collections", "fields", "relations"]
+        
+        keysToFilter.forEach(keyToFilter => {
+            //schemaDiffData.diff[keyToFilter] = schemaDiffData.diff[keyToFilter].filter((entry) => collectionNameArray.includes(entry.collection))
+        })
+        //console.dir(schemaDiffData, {depth: null});
+
+        keysToFilter.forEach((keyToFilter) => {
+            console.log("@@@")
+            schemaDiffData.diff[keyToFilter].forEach((entry) => {
+                entry.diff.forEach(difference => {
+                    let kind = "";
+                    switch (difference.kind) {
+                        case "N":
+                            kind = "New";
+                            break;
+                        case "D":
+                            kind = "Delete";
+                            break;
+                        default:
+                            kind = `Unknown (${difference.kind})`
+                            break;
+                    }
+                    console.log(`${kind}: ${entry.collection}`)
+                })
+                
+            })
+        })
+        //directus.request(schemaApply(data)) 
         return;
     }
 
