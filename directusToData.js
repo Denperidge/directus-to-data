@@ -58,17 +58,21 @@ module.exports = async function({
     outputFilename="",
     configFilename="",
     encoding="",
-    backupSchema=false,
+    backupSchema="",
+    restoreSchema="",
     callback=function(data){},
     directusSdk=require("@directus/sdk")
 }) {
-    const { createDirectus, rest, readItems, schemaSnapshot, staticToken: staticTokenAuth } = directusSdk;
+    const { createDirectus, rest, readItems, schemaSnapshot, schemaDiff, staticToken: staticTokenAuth } = directusSdk;
     
     let config = {}
     configFilename = configFilename || env.CONFIG_FILENAME || ".directus.json";
 
+    console.log(configFilename)
+
     if (existsSync(configFilename)) {
         config = JSON.parse(readFileSync(configFilename, {encoding: encoding}));
+        console.log(config)
     }
     cmsUrl = cmsUrl || config["cmsUrl"] || env.CMS_URL;
     staticToken = staticToken || config["staticToken"] || env.STATIC_TOKEN;
@@ -76,24 +80,34 @@ module.exports = async function({
     outputFilename = outputFilename || config["outputFilename"]  || env.OUTPUT_FILENAME || "{{collectionName}}.json";
     encoding = encoding || config["encoding"] || env.ENCODING || "utf-8";
     backupSchema = backupSchema || config["backupSchema"] || env.BACKUP_SCHEMA || false;
+    restoreSchema = restoreSchema || config["restoreSchema"] || env.RESTORE_SCHEMA || null;
 
     let collectionNameArray = [];
 
 
-    if (collectionName.constructor === Array) {
-        collectionNameArray = collectionName;
-    } else {
-        try {
-            const jsonParsedCollectionName = JSON.parse(jsonParsedCollectionName)
-            if (jsonParsedCollectionName.constructor === Array) {
-                collectionNameArray = jsonParsedCollectionName;
-            }
-        } catch (e) {}
-    } 
-    // If it couldn't be parsed as JSON and wasn't an array, assume string
-    collectionNameArray = collectionNameArray.length > 0 ? collectionNameArray : [collectionName];
-
+    if (collectionName && !restoreSchema) {
+        if (collectionName.constructor === Array) {
+            collectionNameArray = collectionName;
+        } else {
+            try {
+                const jsonParsedCollectionName = JSON.parse(jsonParsedCollectionName)
+                if (jsonParsedCollectionName.constructor === Array) {
+                    collectionNameArray = jsonParsedCollectionName;
+                }
+            } catch (e) {}
+        } 
+        // If it couldn't be parsed as JSON and wasn't an array, assume string
+        collectionNameArray = collectionNameArray.length > 0 ? collectionNameArray : [collectionName];    
+    }
+    
     const directus = createDirectus(cmsUrl).with(staticTokenAuth(staticToken)).with(rest());
+
+    if (restoreSchema) {
+        const schemaSnapshot = JSON.parse(readFileSync(restoreSchema, {encoding: encoding}))
+        const data = await directus.request(schemaDiff(schemaSnapshot));
+        console.dir(data, {depth: null})
+        return;
+    }
 
     if (backupSchema) {
         directus.request(schemaSnapshot()).then((schema) => {
@@ -102,7 +116,7 @@ module.exports = async function({
             })
             
             writeFileSync("test.json", JSON.stringify(schema), {encoding: "utf-8"})
-        }).catch((err) => { console.error(err); })
+        }).catch(_handleError)
 
     }
     
@@ -121,6 +135,10 @@ module.exports = async function({
     });
 }
 
+function restoreSchema(filename, apply=false) {
+    
+}
+
 if (require.main == module) {
     const { program } = require("commander");
     program
@@ -134,6 +152,7 @@ if (require.main == module) {
                 "where to save the JSON file. you can use the {{collectionName}} template string value, which will be replaced with the passed collection name (default: '{{collectionName}}.json')")
         .option("-e, --encoding <encoding>", "which encoding to use when reading/writing. Passed directly to Node.js' fs functions (default: 'utf-8')")
         .option("-i, --config-filename, --config <filename>", "path towards directus-to-data's json config")
+        .option("-r, --restore-schema <filename>", "path towards schema you want to apply the CMS url. This overrides default behaviour")
         .action((options) => {
             module.exports(options);
         });
