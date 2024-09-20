@@ -48,6 +48,8 @@ function _handleError(err) { if (err) { console.error(err); };}
  * @default .directus.json
  * @param encoding which encoding to use when reading/writing. Passed directly to Node.js' fs functions
  * @default utf-8
+ * @param prettify value to pass to JSON.stringify 'space' parameter to prettify JSON output. Disabled if set to 0 or false. Set to 4 by default if a truthy non-number value or -1 is passed. If a different number is passed, that will be used instead
+ * @default 4
  * @param backupSchema path towards file you want to store the collections' schema to. This command ignores collections whose names were not passed
  * @default null
  * @param restoreSchema path towards schema you want to apply to the CMS. This overrides default behaviour. This command ignores collections whose names were not passed
@@ -64,6 +66,7 @@ module.exports = async function({
     outputFilename="",
     configFilename="",
     encoding="",
+    prettify=-1,
     backupSchema="",
     restoreSchema="",
     applySchema=false,
@@ -83,6 +86,7 @@ module.exports = async function({
     collectionName = collectionName || config["collectionName"] || env.COLLECTION_NAME;
     outputFilename = outputFilename || config["outputFilename"]  || env.OUTPUT_FILENAME || "{{collectionName}}.json";
     encoding = encoding || config["encoding"] || env.ENCODING || "utf-8";
+    prettify = prettify || config["prettify"] || env.PRETTIFY || false;
     backupSchema = backupSchema || config["backupSchema"] || env.BACKUP_SCHEMA || null;
     restoreSchema = restoreSchema || config["restoreSchema"] || env.RESTORE_SCHEMA || null;
     applySchema = applySchema || config["applySchema"] || env.APPLY_SCHEMA || false;
@@ -105,6 +109,16 @@ module.exports = async function({
     } 
     // If it couldn't be parsed as JSON and wasn't an array, assume string
     collectionNameArray = collectionNameArray.length > 0 ? collectionNameArray : [collectionName];    
+
+    if (prettify) {
+        try {
+            prettify = parseInt(prettify);
+        } catch {
+            if (prettify.constructor !== Number || prettify === -1) {
+                prettify = 4;
+            }
+        }        
+    }
     
     const directus = createDirectus(cmsUrl).with(staticTokenAuth(staticToken)).with(rest());
 
@@ -165,6 +179,7 @@ module.exports = async function({
             })
         })
         if (applySchema) {
+            console.log("Applying schema...")
             console.log(await directus.request(schemaApply(schemaDiffData)))
         }
         return;
@@ -176,7 +191,7 @@ module.exports = async function({
                 schema[keyToFilter] = schema[keyToFilter].filter((entry) => collectionNameArray.includes(entry.collection))
             })
             
-            writeFileSync("test.json", JSON.stringify(schema), {encoding: "utf-8"})
+            writeFileSync(backupSchema, JSON.stringify(schema, null, prettify), {encoding: "utf-8"})
         }).catch(_handleError)
 
     }
@@ -189,7 +204,7 @@ module.exports = async function({
         directus.request(readItems(collectionName)).then((data) => {    
             mkdirSync(dirname(finalOutputFilename), {recursive: true});
             if (finalOutputFilename != "") {
-                writeFileSync(finalOutputFilename, JSON.stringify(data), { encoding: encoding }, _handleError);
+                writeFileSync(finalOutputFilename, JSON.stringify(data, null, prettify), { encoding: encoding }, _handleError);
             }
             callback(data);
         }).catch((err) => {console.error(err)});
@@ -201,13 +216,14 @@ if (require.main == module) {
     program
         .name("directus-to-data")
         .description("A minimal utility to save a specific Collection from Directus into a local JSON file!")
-        .version("0.5.0")
+        .version("0.6.0")
         .option("-u, --cms-url <url>", "url of your Directus instance. Example value: https://cms.example.com")
         .option("-t, --static-token <token>", "static token for user login")
         .option("-c, --collection-name, --collection <name...>", "name of the collection you want to save locally")
         .option("-o, --output-filename <filename>, --output <filename>",
                 "where to save the JSON file. you can use the {{collectionName}} template string value, which will be replaced with the passed collection name (default: '{{collectionName}}.json')")
         .option("-e, --encoding <encoding>", "which encoding to use when reading/writing. Passed directly to Node.js' fs functions (default: 'utf-8')")
+        .option("-p, --prettify <space>", "value to pass to JSON.stringify 'space' parameter to prettify JSON output. Disabled if set to 0 or false. Set to 4 by default if a truthy non-number value or -1 is passed. If a different number is passed, that will be used instead")
         .option("-i, --config-filename, --config <filename>", "path towards directus-to-data's json config")
         .option("-b, --backup-schema <filename>", "path towards file you want to store the collections' schema to. This command ignores collections whose names were not passed")
         .option("-r, --restore-schema <filename>", "path towards schema you want to apply to the CMS. This overrides default behaviour. This command ignores collections whose names were not passed")
