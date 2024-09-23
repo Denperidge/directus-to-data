@@ -262,7 +262,7 @@ if (require.main == module) {
         .option("-i, --config-filename, --config <filename>", "path towards directus-to-data's json config")
         .option("-b, --backup-schema <filename>", "path towards file you want to store the collections' schema to. This command ignores collections whose names were not passed")
         .option("-r, --restore-schema <filename>", "path towards schema you want to apply to the CMS. This overrides default behaviour. This command ignores collections whose names were not passed")
-        .option("-a, --apply", "--apply-schema", "for use with --restore-schema/-r. Apply the schema differences to the CMS instead of only displaying the differences")
+        .option("-a, --apply-schema", "for use with --restore-schema/-r. Apply the schema differences to the CMS instead of only displaying the differences")
         .action((options) => {
             module.exports(options);
         });

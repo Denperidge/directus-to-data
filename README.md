@@ -69,7 +69,7 @@ npx directus-to-data --restore-schema schema.json -c "CollectionOne" -c "Collect
 # Note: staticToken should be configured through env variables or the config file. It is shown here for clarity
 
 # If you're sure, apply changes
-npx directus-to-data --apply --restore-schema schema.json -c "CollectionOne" -c "CollectionTwo" --cms-url https://cms.example.com --staticToken DAE_DOJ?1-edOJQHDS
+npx directus-to-data --apply-schema --restore-schema schema.json -c "CollectionOne" -c "CollectionTwo" --cms-url https://cms.example.com --staticToken DAE_DOJ?1-edOJQHDS
 ```
 
 
@@ -135,7 +135,7 @@ jobs:
 | value to pass to JSON.stringify 'space' parameter to prettify JSON output. Disabled if set to 0 or false. Set to 4 by default if a truthy non-number value or -1 is passed. If a different number is passed, that will be used instead | `prettify` | `-p, --prettify <space>` | `PRETTIFY` | 4 | 0, false, 6 |
 | path towards file you want to store the collections' schema to. This command ignores collections whose names were not passed | `backupSchema` | `-b, --backup-schema <filename>` | `BACKUP_SCHEMA` | `null` | `schema.json` |
 | path towards schema you want to apply to the CMS. **This overrides default behaviour.** This command ignores collections whose names were not passed | `restoreSchema` | `-r, --restore-schema <filename>` | `RESTORE_SCHEMA` | `null` | `schema.json` |
-| for use with --restore-schema/-r. Apply the schema differences to the CMS instead of only displaying the differences | `applySchema` | `-a, --apply", "--apply-schema` | `APPLY_SCHEMA` | `false` | `true` |
+| for use with --restore-schema/-r. Apply the schema differences to the CMS instead of only displaying the differences | `applySchema` | `-a, --apply-schema` | `APPLY_SCHEMA` | `false` | `true` |
 | path towards directus-to-data's json config | `configFilename`* | `-i, --config-filename, --config <filename>` | `CONFIG_FILENAME` | .directus.json | ../directus-to-data.json |
 | Optionally, pass a callback function. It will be invoked with callback(data) | `callback`* | N/A | N/A | `function(data){}` | `function(data) { console.log(data); }` |
 | Optionally, pass your own instance of @directus/sdk | `directusSdk`* | N/A | N/A | `require("@directus/sdk")` | `customDirectusSdkInstance` |
