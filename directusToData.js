@@ -127,8 +127,6 @@ module.exports = async function({
     restoreSchema = restoreSchema || config["restoreSchema"] || env.RESTORE_SCHEMA || null;
     applySchema = applySchema || config["applySchema"] || env.APPLY_SCHEMA || false;
 
-    console.log(`prettify: ${prettify}`);
-
     if (!collectionName) {
         console.error("ERROR: directus-to-data requires at least one collection name to be defined");
         return;
