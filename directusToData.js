@@ -70,7 +70,7 @@ function _returnFirstBooleanOrNumber(...args) {
  * @param staticToken static token for user login
  * @param collectionName name(s) of the collection(s) you want to save locally.
  *                       can be passed as string, array or a JSON array string
- * @param outputFilename where to save the JSON file.
+ * @param collectionOutput where to save the JSON file.
  *                       you can use the {{collectionName}} template string value,
  *                       which will be replaced with the passed collection name.
  *                       optionally, set it to an empty string ("") to disable writing to disk
@@ -94,7 +94,7 @@ module.exports = async function({
     cmsUrl="", 
     staticToken="", 
     collectionName="", 
-    outputFilename="",
+    collectionOutput="",
     configFilename="",
     encoding="",
     prettify=-1,
@@ -104,7 +104,7 @@ module.exports = async function({
     callback=function(data){},
     directusSdk=require("@directus/sdk")
 }) {
-    const { createDirectus, rest, readItems, schemaSnapshot, schemaDiff, schemaApply, staticToken: staticTokenAuth } = directusSdk;
+    const { createDirectus, rest, readItems, schemaSnapshot, schemaDiff, schemaApply, readAssetRaw, staticToken: staticTokenAuth } = directusSdk;
     
     // This is done to show parameter as number, whilst having a default falsey value
     if (prettify === -1) {
@@ -120,7 +120,8 @@ module.exports = async function({
     cmsUrl = cmsUrl || config["cmsUrl"] || env.CMS_URL;
     staticToken = staticToken || config["staticToken"] || env.STATIC_TOKEN;
     collectionName = collectionName || config["collectionName"] || env.COLLECTION_NAME;
-    outputFilename = outputFilename || config["outputFilename"]  || env.OUTPUT_FILENAME || "{{collectionName}}.json";
+    collectionOutput = collectionOutput || config["collectionOutput"]  || env.OUTPUT_FILENAME || "{{collectionName}}.json";
+    
     encoding = encoding || config["encoding"] || env.ENCODING || "utf-8";
     prettify = _returnFirstBooleanOrNumber(prettify, config["prettify"], env.PRETTIFY, true);
     backupSchema = backupSchema || config["backupSchema"] || env.BACKUP_SCHEMA || null;
@@ -232,14 +233,19 @@ module.exports = async function({
     }
     
     collectionNameArray.forEach((collectionName) => {
-        const finalOutputFilename = outputFilename.replace("{{collectionName}}", collectionName);
+        const options = {};
+        if (collectionName.includes(":")) {
+            let fields;
+            [collectionName, fields] = collectionName.split(":");
+            options.fields = fields;
+        }
 
-        
+        const finalCollectionOutput = collectionOutput.replace("{{collectionName}}", collectionName);
 
-        directus.request(readItems(collectionName)).then((data) => {    
-            mkdirSync(dirname(finalOutputFilename), {recursive: true});
-            if (finalOutputFilename != "") {
-                writeFileSync(finalOutputFilename, JSON.stringify(data, null, prettify), { encoding: encoding }, _handleError);
+        directus.request(readItems(collectionName, options)).then((data) => {    
+            mkdirSync(dirname(finalCollectionOutput), {recursive: true});
+            if (finalCollectionOutput != "") {
+                writeFileSync(finalCollectionOutput, JSON.stringify(data, null, prettify), { encoding: encoding }, _handleError);
             }
             callback(data);
         }).catch((err) => {console.error(err)});
@@ -254,15 +260,18 @@ if (require.main == module) {
         .version("0.6.0")
         .option("-u, --cms-url <url>", "url of your Directus instance. Example value: https://cms.example.com")
         .option("-t, --static-token <token>", "static token for user login")
-        .option("-c, --collection-name, --collection <name...>", "name of the collection you want to save locally")
-        .option("-o, --output-filename <filename>, --output <filename>",
+        .option("-c, --collection-name, -cn, --collection <name...>", "name of the collection you want to save locally")
+        .option("-co, --collection-output <filename>, --output <filename>",
                 "where to save the JSON file. you can use the {{collectionName}} template string value, which will be replaced with the passed collection name (default: '{{collectionName}}.json')")
+        .option("-a, --asset-ids, --assets, --asset <id...>", 
+                "where to save the asset files. you can use the {{assetId}} template string value, which will be replaced with the passed asset id's (default: '{{collectionName}}.json')")
+        .option("-ao, --assets-output <filename>", "")
         .option("-e, --encoding <encoding>", "which encoding to use when reading/writing. Passed directly to Node.js' fs functions (default: 'utf-8')")
         .option("-p, --prettify <space>", "value to pass to JSON.stringify 'space' parameter to prettify JSON output. Disabled if set to 0 or false. Set to 4 by default if a truthy non-number value or -1 is passed. If a different number is passed, that will be used instead")
         .option("-i, --config-filename, --config <filename>", "path towards directus-to-data's json config")
         .option("-b, --backup-schema <filename>", "path towards file you want to store the collections' schema to. This command ignores collections whose names were not passed")
         .option("-r, --restore-schema <filename>", "path towards schema you want to apply to the CMS. This overrides default behaviour. This command ignores collections whose names were not passed")
-        .option("-a, --apply-schema", "for use with --restore-schema/-r. Apply the schema differences to the CMS instead of only displaying the differences")
+        .option("--apply-schema", "for use with --restore-schema/-r. Apply the schema differences to the CMS instead of only displaying the differences")
         .action((options) => {
             module.exports(options);
         });

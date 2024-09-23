@@ -22,7 +22,7 @@ const directusToData = require("directus-to-data");
 module.exports = function (eleventyConfig) {
     directusToData({
         cmsUrl: "https://cms.example.com",
-        outputFilename: "src/_data/{{collectionName}}.json",
+        collectionOutput: "src/_data/{{collectionName}}.json",
         collectionName: "MyCollection",
         staticToken: "DAE_DOJ?1-edOJQHDS"
     });
@@ -42,7 +42,7 @@ or a config file. See [Reference - Options](#options) or [directusToData.js](dir
 directusToData({
   configFilename: ".directus.json",
   collectionName: ["FirstCollection", "SecondCollection"],
-  outputFilename: "src/_data/{{collectionName}}.json",
+  collectionOutput: "src/_data/{{collectionName}}.json",
 });
 
 // .directus.json
@@ -130,7 +130,7 @@ jobs:
 | url of your Directus instance | `cmsUrl`                            | `-u, --cms-url <url>` |  `CMS_URL` | Not set       | https://cms.example.com |
 | static token for user login | `staticToken`       | `-t, --static-token <token>` | `STATIC_TOKEN` | Not set | DAE_DOJ?1-edOJQHDS |
 | name(s) of the collection(s) you want to save locally. can be passed as string, array or a JSON array string | `collectionName` | `-c, --collection-name, --collection <name>` | `COLLECTION_NAME` | Not set | MyCollection or ["CollectionOne", "CollectionTwo"] or '["CollectionOne", "CollectionTwo"]' |
-| where to save the JSON file. you can use the `{{collectionName}}` template string value, which will be replaced with the passed collection name. Optionally, set it to an empty string (`""`) to disable writing to disk | `outputFilename` | `-o, --output-filename, --output <filename>` | `OUTPUT_FILENAME` | {{collectionName}}.json | src/_data/{{collectionName}}.json |
+| where to save the JSON file. you can use the `{{collectionName}}` template string value, which will be replaced with the passed collection name. Optionally, set it to an empty string (`""`) to disable writing to disk | `collectionOutput` | `-o, --collection-filename, --output <filename>` | `OUTPUT_FILENAME` | {{collectionName}}.json | src/_data/{{collectionName}}.json |
 | which encoding to use when reading/writing. Passed directly to Node.js' fs functions | `encoding` | `-e, --encoding <encoding>` | `ENCODING` | utf-8 | ascii |
 | value to pass to JSON.stringify 'space' parameter to prettify JSON output. Disabled if set to 0 or false. Set to 4 by default if a truthy non-number value or -1 is passed. If a different number is passed, that will be used instead | `prettify` | `-p, --prettify <space>` | `PRETTIFY` | 4 | 0, false, 6 |
 | path towards file you want to store the collections' schema to. This command ignores collections whose names were not passed | `backupSchema` | `-b, --backup-schema <filename>` | `BACKUP_SCHEMA` | `null` | `schema.json` |
