@@ -5,6 +5,37 @@ const { env } = require("process");
 
 function _handleError(err) { if (err) { console.error(err); };}
 
+function _returnFirstBooleanOrNumber(...args) {
+    for (let i = 0; i < args.length; i++) {
+        const arg = args[i];
+
+        if (arg === null || arg === undefined) {
+            continue;
+        }
+
+        switch(arg.constructor) {
+            case Boolean:
+                return arg;
+            
+            case Number:
+                return arg;
+            
+            case String:
+                if (arg === "true") {
+                    return true;
+                } else if (arg === "false") {
+                    return false;
+                }
+                try {
+                    const parsed = parseInt(arg);
+                    return parsed;
+                } catch {}
+                break;
+            
+        }
+    };
+}
+
 /**
  * @description A minimal utility to save a specific Collection from Directus into a local JSON file!
  * 
@@ -75,6 +106,11 @@ module.exports = async function({
 }) {
     const { createDirectus, rest, readItems, schemaSnapshot, schemaDiff, schemaApply, staticToken: staticTokenAuth } = directusSdk;
     
+    // This is done to show parameter as number, whilst having a default falsey value
+    if (prettify === -1) {
+        prettify = null;
+    }
+
     let config = {}
     configFilename = configFilename || env.CONFIG_FILENAME || ".directus.json";
 
@@ -86,10 +122,12 @@ module.exports = async function({
     collectionName = collectionName || config["collectionName"] || env.COLLECTION_NAME;
     outputFilename = outputFilename || config["outputFilename"]  || env.OUTPUT_FILENAME || "{{collectionName}}.json";
     encoding = encoding || config["encoding"] || env.ENCODING || "utf-8";
-    prettify = prettify || config["prettify"] || env.PRETTIFY || false;
+    prettify = _returnFirstBooleanOrNumber(prettify, config["prettify"], env.PRETTIFY, true);
     backupSchema = backupSchema || config["backupSchema"] || env.BACKUP_SCHEMA || null;
     restoreSchema = restoreSchema || config["restoreSchema"] || env.RESTORE_SCHEMA || null;
     applySchema = applySchema || config["applySchema"] || env.APPLY_SCHEMA || false;
+
+    console.log(`prettify: ${prettify}`);
 
     if (!collectionName) {
         console.error("ERROR: directus-to-data requires at least one collection name to be defined");
@@ -110,14 +148,13 @@ module.exports = async function({
     // If it couldn't be parsed as JSON and wasn't an array, assume string
     collectionNameArray = collectionNameArray.length > 0 ? collectionNameArray : [collectionName];    
 
+    
     if (prettify) {
-        try {
-            prettify = parseInt(prettify);
-        } catch {
-            if (prettify.constructor !== Number || prettify === -1) {
-                prettify = 4;
-            }
-        }        
+        if (prettify.constructor === Boolean) {
+            prettify = prettify ? 4 : 0;
+        }
+    } else {
+        prettify = 0;
     }
     
     const directus = createDirectus(cmsUrl).with(staticTokenAuth(staticToken)).with(rest());
