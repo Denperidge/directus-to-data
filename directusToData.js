@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 const { writeFileSync, readFileSync, existsSync, mkdirSync } = require("fs");
+const { writeFile } = require("fs/promises")
 const { dirname } = require("path");
 const { env } = require("process");
 
@@ -34,6 +35,20 @@ function _returnFirstBooleanOrNumber(...args) {
             
         }
     };
+}
+
+function findImagesInDirectusData(object, foundImages=[]) {
+    const keys = Object.keys(object);
+    if (keys.includes("id") && keys.includes("filename_download")) {
+        // if image data
+        foundImages.push({id: object.id, filename: object.filename_download})
+    }
+    for (const [key, value] of Object.entries(object)) {
+        if (value && value.constructor === Object) {
+            foundImages = findImagesInDirectusData(value, foundImages);
+        }
+    }
+    return foundImages;
 }
 
 /**
@@ -95,6 +110,7 @@ module.exports = async function({
     staticToken="", 
     collectionName="", 
     collectionOutput="",
+    assetsOutput="",
     configFilename="",
     encoding="",
     prettify=-1,
@@ -121,7 +137,7 @@ module.exports = async function({
     staticToken = staticToken || config["staticToken"] || env.STATIC_TOKEN;
     collectionName = collectionName || config["collectionName"] || env.COLLECTION_NAME;
     collectionOutput = collectionOutput || config["collectionOutput"]  || env.OUTPUT_FILENAME || "{{collectionName}}.json";
-    
+    assetsOutput = assetsOutput || config["assetsOutput"] || env.ASSETS_OUTPUT || "{{filename}}";
     encoding = encoding || config["encoding"] || env.ENCODING || "utf-8";
     prettify = _returnFirstBooleanOrNumber(prettify, config["prettify"], env.PRETTIFY, true);
     backupSchema = backupSchema || config["backupSchema"] || env.BACKUP_SCHEMA || null;
@@ -242,11 +258,21 @@ module.exports = async function({
 
         const finalCollectionOutput = collectionOutput.replace("{{collectionName}}", collectionName);
 
-        directus.request(readItems(collectionName, options)).then((data) => {    
+        directus.request(readItems(collectionName, options)).then((data) => {
+            
             mkdirSync(dirname(finalCollectionOutput), {recursive: true});
             if (finalCollectionOutput != "") {
                 writeFileSync(finalCollectionOutput, JSON.stringify(data, null, prettify), { encoding: encoding }, _handleError);
             }
+
+            const images = findImagesInDirectusData(data)
+            images.forEach(async ({id, filename}) => {
+                filename = assetsOutput.replace("{{filename}}", filename)
+                // Thanks to https://stackoverflow.com/a/78955184
+                const stream = await directus.request(readAssetRaw(id))
+                await writeFile(filename, stream, {encoding: "utf-8"});
+            });
+
             callback(data);
         }).catch((err) => {console.error(err)});
     });
@@ -264,7 +290,7 @@ if (require.main == module) {
         .option("-co, --collection-output <filename>, --output <filename>",
                 "where to save the JSON file. you can use the {{collectionName}} template string value, which will be replaced with the passed collection name (default: '{{collectionName}}.json')")
         .option("-a, --asset-ids, --assets, --asset <id...>", 
-                "where to save the asset files. you can use the {{assetId}} template string value, which will be replaced with the passed asset id's (default: '{{collectionName}}.json')")
+                "where to save the asset files. you can use the {{filename}} template string value, which will be replaced with the passed asset download filename (default: '{{filename}}')")
         .option("-ao, --assets-output <filename>", "")
         .option("-e, --encoding <encoding>", "which encoding to use when reading/writing. Passed directly to Node.js' fs functions (default: 'utf-8')")
         .option("-p, --prettify <space>", "value to pass to JSON.stringify 'space' parameter to prettify JSON output. Disabled if set to 0 or false. Set to 4 by default if a truthy non-number value or -1 is passed. If a different number is passed, that will be used instead")
