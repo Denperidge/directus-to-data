@@ -2,7 +2,8 @@
 A minimal utility to save a specific Collection from Directus into a local JSON file!
 
 ## How-to
-### Usage (cli)
+### Usage
+#### Usage: CLI
 ```bash
 npx directus-to-data -u https://cms.example.com -t DAE_DOJ?1-edOJQHDS -c MyCollection  # Basic usage
 npx directus-to-data -i ../.directus.json  # config file usage
@@ -12,7 +13,7 @@ npx directus-to-data --help  # View all options
 You can alternatively configure `directus-to-data` using environment variables
 or a config file. See [Reference - Options](#options) or [directusToData.js](directusToData.js) for further documentation.
 
-### Usage (code)
+#### Usage: Code
 > Note: the following example is written for use with 11ty, but it can easily be adapted for any usecase.
 
 ```js
@@ -36,7 +37,7 @@ module.exports = function (eleventyConfig) {
 You can alternatively configure `directus-to-data` using environment variables
 or a config file. See [Reference - Options](#options) or [directusToData.js](directusToData.js) for further documentation.
 
-### Usage (config file)
+#### Usage: Config file 
 ```js
 // .data.mjs
 directusToData({
@@ -54,6 +55,15 @@ directusToData({
 
 You can alternatively configure `directus-to-data` using environment variables.
 See [Reference - Options](#options) or [directusToData.js](directusToData.js) for further documentation.
+
+
+### Specifying fields & downloading assets/files
+- To specify fields for a collection, use the `collectionName:selectorString` syntax.
+- If any objects with an `id` & `filename_download` key are found, directus-to-data will download those assets. You can modify the [assetsOutput option](#options) to specify a subdirectory 
+```bash
+# This will fetch CollectionOne fully, and CollectionTwo all first-descendant values, with the image field also requesting its own id & filename_download properties, as such downloading the files
+directus-to-data --assets-output src/assets/{{filename}} -c CollectionOne -c CollectionTwo:*,image.id,image.filename_download --collection-output src/_data/{{collectionName}}.json 
+```
 
 ### Backup & restore collection schema
 > Note: due to Directus limitations, this requires credentials for an admin account of your local CMS instance
@@ -129,13 +139,14 @@ jobs:
 | ----------- | ----------------------------------- | --------------------- | ---------- | ------------- | ----------------------- |
 | url of your Directus instance | `cmsUrl`                            | `-u, --cms-url <url>` |  `CMS_URL` | Not set       | https://cms.example.com |
 | static token for user login | `staticToken`       | `-t, --static-token <token>` | `STATIC_TOKEN` | Not set | DAE_DOJ?1-edOJQHDS |
-| name(s) of the collection(s) you want to save locally. can be passed as string, array or a JSON array string | `collectionName` | `-c, --collection-name, --collection <name>` | `COLLECTION_NAME` | Not set | MyCollection or ["CollectionOne", "CollectionTwo"] or '["CollectionOne", "CollectionTwo"]' |
-| where to save the JSON file. you can use the `{{collectionName}}` template string value, which will be replaced with the passed collection name. Optionally, set it to an empty string (`""`) to disable writing to disk | `collectionOutput` | `-o, --collection-filename, --output <filename>` | `OUTPUT_FILENAME` | {{collectionName}}.json | src/_data/{{collectionName}}.json |
+| name(s) of the collection(s) you want to save locally. can be passed as string, array or a JSON array string | `collectionName` | `-c, --collection-name, --collection <name>` | `COLLECTION_NAME` | Not set | MyCollection or ["CollectionOne", "CollectionTwo"] or '["CollectionOne", "CollectionTwo"]'
+| where to save the JSON file. you can use the `{{collectionName}}` template string value, which will be replaced with the passed collection name. Optionally, set it to an empty string (`""`) to disable writing to disk | `collectionOutput` | `-o, --collection-output, --output <filename>` | `OUTPUT_FILENAME` | {{collectionName}}.json | src/_data/{{collectionName}}.json |
+| where to save the asset files. you can use the {{filename}} template string value, which will be replaced with the passed asset download filename & extension | `assetsOutput` | `-a, --assets-output, --assets <filename>` | `ASSETS_OUTPUT` | {{filename}} | src/assets/{{filename}} | 
 | which encoding to use when reading/writing. Passed directly to Node.js' fs functions | `encoding` | `-e, --encoding <encoding>` | `ENCODING` | utf-8 | ascii |
 | value to pass to JSON.stringify 'space' parameter to prettify JSON output. Disabled if set to 0 or false. Set to 4 by default if a truthy non-number value or -1 is passed. If a different number is passed, that will be used instead | `prettify` | `-p, --prettify <space>` | `PRETTIFY` | 4 | 0, false, 6 |
-| path towards file you want to store the collections' schema to. This command ignores collections whose names were not passed | `backupSchema` | `-b, --backup-schema <filename>` | `BACKUP_SCHEMA` | `null` | `schema.json` |
-| path towards schema you want to apply to the CMS. **This overrides default behaviour.** This command ignores collections whose names were not passed | `restoreSchema` | `-r, --restore-schema <filename>` | `RESTORE_SCHEMA` | `null` | `schema.json` |
-| for use with --restore-schema/-r. Apply the schema differences to the CMS instead of only displaying the differences | `applySchema` | `-a, --apply-schema` | `APPLY_SCHEMA` | `false` | `true` |
+| path towards file you want to store the collections' schema to. This command ignores collections whose names were not passed | `backupSchema`\*\* | `-b, --backup-schema <filename>` | `BACKUP_SCHEMA` | `null` | `schema.json` |
+| path towards schema you want to apply to the CMS. **This overrides default behaviour.** This command ignores collections whose names were not passed | `restoreSchema`\*\* | `-r, --restore-schema <filename>` | `RESTORE_SCHEMA` | `null` | `schema.json` |
+| for use with --restore-schema/-r. Apply the schema differences to the CMS instead of only displaying the differences | `applySchema`\*\* | `--apply-schema` | `APPLY_SCHEMA` | `false` | `true` |
 | path towards directus-to-data's json config | `configFilename`* | `-i, --config-filename, --config <filename>` | `CONFIG_FILENAME` | .directus.json | ../directus-to-data.json |
 | Optionally, pass a callback function. It will be invoked with callback(data) | `callback`* | N/A | N/A | `function(data){}` | `function(data) { console.log(data); }` |
 | Optionally, pass your own instance of @directus/sdk | `directusSdk`* | N/A | N/A | `require("@directus/sdk")` | `customDirectusSdkInstance` |

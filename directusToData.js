@@ -39,9 +39,9 @@ function _returnFirstBooleanOrNumber(...args) {
 
 function findImagesInDirectusData(object, foundImages=[]) {
     const keys = Object.keys(object);
+    // If image data
     if (keys.includes("id") && keys.includes("filename_download")) {
-        // if image data
-        foundImages.push({id: object.id, filename: object.filename_download})
+        foundImages.push({id: object.id, filename: object.filename_download});
     }
     for (const [key, value] of Object.entries(object)) {
         if (value && value.constructor === Object) {
@@ -68,8 +68,8 @@ function findImagesInDirectusData(object, foundImages=[]) {
  * directusToData({ configFilename: ".directus.json" });
  * // .directus.json
  * {
- *   "cmsUrl": "https://cms.neonpastel.net",
- *   "collectionName": "NeonpastelCat",
+ *   "cmsUrl": "https://cms.example.com",
+ *   "collectionName": "CollectionOne",
  *   "staticToken": "RGL_xKVn7wDEG3-qw3OmccNqR-U9TsUQ"
  * }
  * 
@@ -86,10 +86,14 @@ function findImagesInDirectusData(object, foundImages=[]) {
  * @param collectionName name(s) of the collection(s) you want to save locally.
  *                       can be passed as string, array or a JSON array string
  * @param collectionOutput where to save the JSON file.
- *                       you can use the {{collectionName}} template string value,
- *                       which will be replaced with the passed collection name.
- *                       optionally, set it to an empty string ("") to disable writing to disk
+ *                         you can use the {{collectionName}} template string value,
+ *                         which will be replaced with the passed collection name.
+ *                         optionally, set it to an empty string ("") to disable writing to disk
  * @default {{collectionName}}.json
+ * @param assetsOutput where to save the asset files.
+ *                     you can use the {{filename}} template string value,
+ *                     which will be replaced with the passed asset download filename & extension
+ * @default {{filename}}
  * @param configFilename path towards directus-to-data's json config
  * @default .directus.json
  * @param encoding which encoding to use when reading/writing. Passed directly to Node.js' fs functions
@@ -283,15 +287,14 @@ if (require.main == module) {
     program
         .name("directus-to-data")
         .description("A minimal utility to save a specific Collection from Directus into a local JSON file!")
-        .version("0.6.0")
+        .version("0.7.0")
         .option("-u, --cms-url <url>", "url of your Directus instance. Example value: https://cms.example.com")
         .option("-t, --static-token <token>", "static token for user login")
-        .option("-c, --collection-name, -cn, --collection <name...>", "name of the collection you want to save locally")
-        .option("-co, --collection-output <filename>, --output <filename>",
+        .option("-c, --collection-name, --collection <name...>", "name of the collection you want to save locally")
+        .option("-o, --collection-output, --output <filename>",
                 "where to save the JSON file. you can use the {{collectionName}} template string value, which will be replaced with the passed collection name (default: '{{collectionName}}.json')")
-        .option("-a, --asset-ids, --assets, --asset <id...>", 
-                "where to save the asset files. you can use the {{filename}} template string value, which will be replaced with the passed asset download filename (default: '{{filename}}')")
-        .option("-ao, --assets-output <filename>", "")
+        .option("-a, --assets-output, --assets <filename>", 
+                "where to save the asset files. you can use the {{filename}} template string value, which will be replaced with the passed asset download filename & extension (default: '{{filename}}')")
         .option("-e, --encoding <encoding>", "which encoding to use when reading/writing. Passed directly to Node.js' fs functions (default: 'utf-8')")
         .option("-p, --prettify <space>", "value to pass to JSON.stringify 'space' parameter to prettify JSON output. Disabled if set to 0 or false. Set to 4 by default if a truthy non-number value or -1 is passed. If a different number is passed, that will be used instead")
         .option("-i, --config-filename, --config <filename>", "path towards directus-to-data's json config")

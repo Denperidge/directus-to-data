@@ -1,7 +1,7 @@
 {
   "name": "directus-to-data",
   "description": "A minimal utility to save a specific Collection from Directus into a local JSON file!",
-  "version": "0.6.3",
+  "version": "0.7.0",
   "main": "directusToData.js",
   "bin": "directusToData.js",
   "repository": "https://github.com/Denperidge/directus-to-data.git",
