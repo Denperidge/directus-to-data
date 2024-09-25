@@ -3,7 +3,8 @@ const { writeFileSync, readFileSync, existsSync, mkdirSync } = require("fs");
 const { writeFile } = require("fs/promises")
 const { dirname } = require("path");
 const { env } = require("process");
-const { ofetch } = require("ofetch")
+
+let requestStagger = 0;
 
 function _handleError(err) { if (err) { console.error(err); };}
 
@@ -52,27 +53,47 @@ function findImagesInDirectusData(object, foundImages=[]) {
     return foundImages;
 }
 
-async function directusRequest(directus, directusOptions, taskLabel, expectValue=false, tryAgain=true) {
-    try {
-        const value = await directus.request(directusOptions).catch(err => {
-            console.error("Catch!")
-            console.error(`Error whilst trying to ${taskLabel}`);
-            throw err;
-        });
-        if (expectValue && !value) {
-            console.error(`No data found in ${taskLabel}, but expectValue is set to true. Retry.`)
-            return directusRequest(directus, directusOptions, taskLabel, expectValue, false);
-        }
-        return value;
-    } catch (e) {
-        console.error(`Error whilst trying to ${taskLabel}`);
-        if (tryAgain) {
-            console.log("Trying again...")
-            return directusRequest(directus, directusOptions, taskLabel, expectValue, false)
-        } else {
-            throw e;
-        }
-    }
+
+async function directusRequest(directus, directusOptions, taskLabel, expectValue=false, firstAttempt=true) {
+    return new Promise(async (resolve, reject) => {
+        setTimeout(async () => {
+            try {
+                const value = await directus.request(directusOptions).catch(async err => {
+                    console.error(`Error whilst trying to ${taskLabel}`);
+                    if (firstAttempt) {
+                        console.error("Trying again...")
+                        resolve(await directusRequest(directus, directusOptions, taskLabel, expectValue, false));
+                    } else {
+                        throw err;
+                    }
+                });
+                if (expectValue && !value) {
+                    console.error(`No data found in ${taskLabel}, but expectValue is set to true.`)
+                    if (firstAttempt) {
+                        console.error("Trying again...")
+                        resolve(directusRequest(directus, directusOptions, taskLabel, expectValue, false));
+                    } else {
+                        console.error("Already tried again")
+                        throw new Error("tryAgain set to true");
+                    }
+                }
+                if (!firstAttempt) {
+                    console.error("Successful " + taskLabel)
+                }
+                resolve(value);
+            } catch (e) {
+                console.error(`Error whilst trying to ${taskLabel}`);
+                if (firstAttempt) {
+                    console.log("Trying again...")
+                    return directusRequest(directus, directusOptions, taskLabel, expectValue, false)
+                } else {
+                    throw e;
+                }
+            }
+        }, 1000 * requestStagger);
+        requestStagger++;
+    })
+
 }
 
 /**
@@ -148,7 +169,7 @@ module.exports = async function({
     callback=function(data){},
     directusSdk=require("@directus/sdk")
 }) {
-    const { createDirectus, rest, readItems, schemaSnapshot, schemaDiff, schemaApply, readAssetRaw, staticToken: staticTokenAuth } = directusSdk;
+    const { createDirectus, rest, readItems, schemaSnapshot, schemaDiff, schemaApply, readAssetRaw, readAssetArrayBuffer, staticToken: staticTokenAuth } = directusSdk;
     
     // This is done to show parameter as number, whilst having a default falsey value
     if (prettify === -1) {
@@ -203,7 +224,7 @@ module.exports = async function({
     
     let directus;
     try {
-        directus = createDirectus(cmsUrl, {globals: {fetch: ofetch}}).with(staticTokenAuth(staticToken)).with(rest());
+        directus = createDirectus(cmsUrl).with(staticTokenAuth(staticToken)).with(rest());
     } catch (e) {
         console.error("Error whilst trying to create Directus SDK client")
         throw e;
@@ -295,16 +316,16 @@ module.exports = async function({
             
         mkdirSync(dirname(finalCollectionOutput), {recursive: true});
         if (finalCollectionOutput != "") {
-            writeFileSync(finalCollectionOutput, JSON.stringify(data, null, prettify), { encoding: encoding }, _handleError);
+            writeFile(finalCollectionOutput, JSON.stringify(data, null, prettify), { encoding: encoding }).catch(_handleError);
         }
 
         const images = findImagesInDirectusData(data)
         images.forEach(async ({id, filename}) => {
             filename = assetsOutput.replace("{{filename}}", filename)
             // Thanks to https://stackoverflow.com/a/78955184
-            const stream = directusRequest(directus, readAssetRaw(id), `Requesting asset ${filename} (id: ${id})`, true)
+            const stream = await directusRequest(directus, readAssetArrayBuffer(id), `Requesting asset ${filename} (id: ${id})`, true)
             try {
-                await writeFile(filename, stream, {encoding: "utf-8"});
+                writeFile(filename, Buffer.from(stream), {encoding: "utf-8"});
             } catch (e) {
                 console.error(`Error writing ${filename}`)
                 throw e;
