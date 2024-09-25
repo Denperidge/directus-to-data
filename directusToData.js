@@ -4,6 +4,7 @@ const { writeFile } = require("fs/promises")
 const { dirname } = require("path");
 const { env } = require("process");
 
+const KEYS_TO_FILTER = ["collections", "fields", "relations"];
 let requestStagger = 0;
 
 function _handleError(err) { if (err) { console.error(err); };}
@@ -233,15 +234,13 @@ module.exports = async function({
     if (restoreSchema) {
         const schemaSnapshot = JSON.parse(readFileSync(restoreSchema, {encoding: encoding}))
         const schemaDiffData = await directusRequest(directus, schemaDiff(schemaSnapshot), "get schema diff data");
-
-        const keysToFilter = ["collections", "fields", "relations"]
         
         // Only keep changes for selected collections
-        keysToFilter.forEach(keyToFilter => {
+        KEYS_TO_FILTER.forEach(keyToFilter => {
             schemaDiffData.diff[keyToFilter] = schemaDiffData.diff[keyToFilter].filter((entry) => collectionNameArray.includes(entry.collection))
         })
 
-        keysToFilter.forEach((keyToFilter) => {
+        KEYS_TO_FILTER.forEach((keyToFilter) => {
             schemaDiffData.diff[keyToFilter].forEach((entry) => {
                 console.log(`--- ${entry.collection} ---`);
                 entry.diff.forEach(difference => {
@@ -295,7 +294,7 @@ module.exports = async function({
 
     if (backupSchema) {
         const schema = await directusRequest(directus, schemaSnapshot(), "getting schema snapshot")
-        ["collections", "fields", "relations"].forEach(keyToFilter => {
+        KEYS_TO_FILTER.forEach(keyToFilter => {
             schema[keyToFilter] = schema[keyToFilter].filter((entry) => collectionNameArray.includes(entry.collection))
         })
         
@@ -345,7 +344,7 @@ if (require.main == module) {
         .option("-u, --cms-url <url>", "url of your Directus instance. Example value: https://cms.example.com")
         .option("-t, --static-token <token>", "static token for user login")
         .option("-c, --collection-name, --collection <name...>", "name of the collection you want to save locally")
-        .option("-o, --collection-output, --output <filename>",
+        .option("-o, --collection-output, --output [filename]",
                 "where to save the JSON file. you can use the {{collectionName}} template string value, which will be replaced with the passed collection name (default: '{{collectionName}}.json')")
         .option("-a, --assets-output, --assets <filename>", 
                 "where to save the asset files. you can use the {{filename}} template string value, which will be replaced with the passed asset download filename & extension (default: '{{filename}}')")
