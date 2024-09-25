@@ -9,6 +9,7 @@
   "license": "Unlicense",
   "dependencies": {
     "@directus/sdk": "^16.1.1",
-    "commander": "^12.1.0"
+    "commander": "^12.1.0",
+    "ofetch": "^1.4.0"
   }
 }

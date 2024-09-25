@@ -3,6 +3,7 @@ const { writeFileSync, readFileSync, existsSync, mkdirSync } = require("fs");
 const { writeFile } = require("fs/promises")
 const { dirname } = require("path");
 const { env } = require("process");
+const { ofetch } = require("ofetch")
 
 function _handleError(err) { if (err) { console.error(err); };}
 
@@ -49,6 +50,29 @@ function findImagesInDirectusData(object, foundImages=[]) {
         }
     }
     return foundImages;
+}
+
+async function directusRequest(directus, directusOptions, taskLabel, expectValue=false, tryAgain=true) {
+    try {
+        const value = await directus.request(directusOptions).catch(err => {
+            console.error("Catch!")
+            console.error(`Error whilst trying to ${taskLabel}`);
+            throw err;
+        });
+        if (expectValue && !value) {
+            console.error(`No data found in ${taskLabel}, but expectValue is set to true. Retry.`)
+            return directusRequest(directus, directusOptions, taskLabel, expectValue, false);
+        }
+        return value;
+    } catch (e) {
+        console.error(`Error whilst trying to ${taskLabel}`);
+        if (tryAgain) {
+            console.log("Trying again...")
+            return directusRequest(directus, directusOptions, taskLabel, expectValue, false)
+        } else {
+            throw e;
+        }
+    }
 }
 
 /**
@@ -176,11 +200,18 @@ module.exports = async function({
         prettify = 0;
     }
     
-    const directus = createDirectus(cmsUrl).with(staticTokenAuth(staticToken)).with(rest());
+    
+    let directus;
+    try {
+        directus = createDirectus(cmsUrl, {globals: {fetch: ofetch}}).with(staticTokenAuth(staticToken)).with(rest());
+    } catch (e) {
+        console.error("Error whilst trying to create Directus SDK client")
+        throw e;
+    }
 
     if (restoreSchema) {
         const schemaSnapshot = JSON.parse(readFileSync(restoreSchema, {encoding: encoding}))
-        const schemaDiffData = await directus.request(schemaDiff(schemaSnapshot));
+        const schemaDiffData = await directusRequest(directus, schemaDiff(schemaSnapshot), "get schema diff data");
 
         const keysToFilter = ["collections", "fields", "relations"]
         
@@ -236,23 +267,21 @@ module.exports = async function({
         })
         if (applySchema) {
             console.log("Applying schema...")
-            console.log(await directus.request(schemaApply(schemaDiffData)))
+            console.log(await directusRequest(directus, schemaApply(schemaDiffData), "applying schema"))
         }
         return;
     }
 
     if (backupSchema) {
-        directus.request(schemaSnapshot()).then((schema) => {
-            ["collections", "fields", "relations"].forEach(keyToFilter => {
-                schema[keyToFilter] = schema[keyToFilter].filter((entry) => collectionNameArray.includes(entry.collection))
-            })
-            
-            writeFileSync(backupSchema, JSON.stringify(schema, null, prettify), {encoding: "utf-8"})
-        }).catch(_handleError)
-
+        const schema = await directusRequest(directus, schemaSnapshot(), "getting schema snapshot")
+        ["collections", "fields", "relations"].forEach(keyToFilter => {
+            schema[keyToFilter] = schema[keyToFilter].filter((entry) => collectionNameArray.includes(entry.collection))
+        })
+        
+        writeFileSync(backupSchema, JSON.stringify(schema, null, prettify), {encoding: "utf-8"})
     }
     
-    collectionNameArray.forEach((collectionName) => {
+    collectionNameArray.forEach(async (collectionName) => {
         const options = {};
         if (collectionName.includes(":")) {
             let fields;
@@ -262,23 +291,27 @@ module.exports = async function({
 
         const finalCollectionOutput = collectionOutput.replace("{{collectionName}}", collectionName);
 
-        directus.request(readItems(collectionName, options)).then((data) => {
+        const data = await directusRequest(directus, readItems(collectionName, options), `reading items from ${collectionName}`)
             
-            mkdirSync(dirname(finalCollectionOutput), {recursive: true});
-            if (finalCollectionOutput != "") {
-                writeFileSync(finalCollectionOutput, JSON.stringify(data, null, prettify), { encoding: encoding }, _handleError);
-            }
+        mkdirSync(dirname(finalCollectionOutput), {recursive: true});
+        if (finalCollectionOutput != "") {
+            writeFileSync(finalCollectionOutput, JSON.stringify(data, null, prettify), { encoding: encoding }, _handleError);
+        }
 
-            const images = findImagesInDirectusData(data)
-            images.forEach(async ({id, filename}) => {
-                filename = assetsOutput.replace("{{filename}}", filename)
-                // Thanks to https://stackoverflow.com/a/78955184
-                const stream = await directus.request(readAssetRaw(id))
+        const images = findImagesInDirectusData(data)
+        images.forEach(async ({id, filename}) => {
+            filename = assetsOutput.replace("{{filename}}", filename)
+            // Thanks to https://stackoverflow.com/a/78955184
+            const stream = directusRequest(directus, readAssetRaw(id), `Requesting asset ${filename} (id: ${id})`, true)
+            try {
                 await writeFile(filename, stream, {encoding: "utf-8"});
-            });
+            } catch (e) {
+                console.error(`Error writing ${filename}`)
+                throw e;
+            }
+        });
 
-            callback(data);
-        }).catch((err) => {console.error(err)});
+        callback(data);
     });
 }
 
