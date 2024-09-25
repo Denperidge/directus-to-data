@@ -5,6 +5,7 @@ const { dirname } = require("path");
 const { env } = require("process");
 
 const KEYS_TO_FILTER = ["collections", "fields", "relations"];
+const NO_WRITE = "NO_WRITE";
 let requestStagger = 0;
 
 function _handleError(err) { if (err) { console.error(err); };}
@@ -134,11 +135,12 @@ async function directusRequest(directus, directusOptions, taskLabel, expectValue
  * @param collectionOutput where to save the JSON file.
  *                         you can use the {{collectionName}} template string value,
  *                         which will be replaced with the passed collection name.
- *                         optionally, set it to an empty string ("") to disable writing to disk
+ *                         optionally, set it to `NO_WRITE` to disable writing to disk
  * @default {{collectionName}}.json
  * @param assetsOutput where to save the asset files.
  *                     you can use the {{filename}} template string value,
  *                     which will be replaced with the passed asset download filename & extension
+ *                     optionally, set it to `NO_WRITE` to disable writing to disk
  * @default {{filename}}
  * @param configFilename path towards directus-to-data's json config
  * @default .directus.json
@@ -309,27 +311,28 @@ module.exports = async function({
             options.fields = fields;
         }
 
-        const finalCollectionOutput = collectionOutput.replace("{{collectionName}}", collectionName);
-
         const data = await directusRequest(directus, readItems(collectionName, options), `reading items from ${collectionName}`)
-            
-        mkdirSync(dirname(finalCollectionOutput), {recursive: true});
-        if (finalCollectionOutput != "") {
+
+        if (collectionOutput != NO_WRITE) {
+            const finalCollectionOutput = collectionOutput.replace("{{collectionName}}", collectionName);
+            mkdirSync(dirname(finalCollectionOutput), {recursive: true});
             writeFile(finalCollectionOutput, JSON.stringify(data, null, prettify), { encoding: encoding }).catch(_handleError);
         }
 
-        const images = findImagesInDirectusData(data)
-        images.forEach(async ({id, filename}) => {
-            filename = assetsOutput.replace("{{filename}}", filename)
-            // Thanks to https://stackoverflow.com/a/78955184
-            const stream = await directusRequest(directus, readAssetArrayBuffer(id), `Requesting asset ${filename} (id: ${id})`, true)
-            try {
-                writeFile(filename, Buffer.from(stream), {encoding: "utf-8"});
-            } catch (e) {
-                console.error(`Error writing ${filename}`)
-                throw e;
-            }
-        });
+        if (assetsOutput != NO_WRITE) {
+            const images = findImagesInDirectusData(data)
+            images.forEach(async ({id, filename}) => {
+                filename = assetsOutput.replace("{{filename}}", filename)
+                // Thanks to https://stackoverflow.com/a/78955184
+                const stream = await directusRequest(directus, readAssetArrayBuffer(id), `Requesting asset ${filename} (id: ${id})`, true)
+                try {
+                    writeFile(filename, Buffer.from(stream), {encoding: "utf-8"});
+                } catch (e) {
+                    console.error(`Error writing ${filename}`)
+                    throw e;
+                }
+            });
+        }
 
         callback(data);
     });
@@ -340,14 +343,14 @@ if (require.main == module) {
     program
         .name("directus-to-data")
         .description("A minimal utility to save a specific Collection from Directus into a local JSON file!")
-        .version("0.7.0")
+        .version("0.7.2")
         .option("-u, --cms-url <url>", "url of your Directus instance. Example value: https://cms.example.com")
         .option("-t, --static-token <token>", "static token for user login")
         .option("-c, --collection-name, --collection <name...>", "name of the collection you want to save locally")
         .option("-o, --collection-output, --output [filename]",
-                "where to save the JSON file. you can use the {{collectionName}} template string value, which will be replaced with the passed collection name (default: '{{collectionName}}.json')")
+                "where to save the JSON file. you can use the {{collectionName}} template string value, which will be replaced with the passed collection name (default: '{{collectionName}}.json'), optionally, set it to 'NO_WRITE' to disable writing to disk")
         .option("-a, --assets-output, --assets <filename>", 
-                "where to save the asset files. you can use the {{filename}} template string value, which will be replaced with the passed asset download filename & extension (default: '{{filename}}')")
+                "where to save the asset files. you can use the {{filename}} template string value, which will be replaced with the passed asset download filename & extension (default: '{{filename}}'), optionally, set it to 'NO_WRITE' to disable writing to disk")
         .option("-e, --encoding <encoding>", "which encoding to use when reading/writing. Passed directly to Node.js' fs functions (default: 'utf-8')")
         .option("-p, --prettify <space>", "value to pass to JSON.stringify 'space' parameter to prettify JSON output. Disabled if set to 0 or false. Set to 4 by default if a truthy non-number value or -1 is passed. If a different number is passed, that will be used instead")
         .option("-i, --config-filename, --config <filename>", "path towards directus-to-data's json config")
