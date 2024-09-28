@@ -191,7 +191,7 @@ jobs:
 1. Create personal access tokens for your repository. See https://github.com/settings/tokens . If the repo is part of an organisation, it may need to enable the ability to allow personal access tokens
    - Limit it to the relevant repositories
    - Enable `Actions > Read and write`/`Read and Write access to actions`
-3. Logged in as an admin, navigate to Settings > Flows (`https://cms.example.com/admin/settings/flows`) and create a new flow. The trigger can be anything
+3. Logged in as an admin, navigate to Settings > Flows (`https://cms.example.com/admin/settings/flows`) and create a new flow. The trigger can be anything, but (unless you modify the scripts), you wanna turn off `Collection Page > Requires Selection`
 4. Add a `run script`. Modify the example below and add it to the sript
     ```js
     module.exports = async function(data) {
