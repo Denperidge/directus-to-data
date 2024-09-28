@@ -186,6 +186,49 @@ jobs:
         uses: actions/deploy-pages@v4
 ```
 
+### Directus flow GitHub builds
+> Note: this is currently a horridly manual setup, which is not what I like. But alas.
+1. Create personal access tokens for your repository. See https://github.com/settings/tokens . If the repo is part of an organisation, it may need to enable the ability to allow personal access tokens
+   - Limit it to the relevant repositories
+   - Enable `Actions > Read and write`/`Read and Write access to actions`
+3. Logged in as an admin, navigate to Settings > Flows (`https://cms.example.com/admin/settings/flows`) and create a new flow. The trigger can be anything
+4. Add a `run script`. Modify the example below and add it to the sript
+    ```js
+    module.exports = async function(data) {
+    	// Fallbacks for automatic vs manual trigger
+        const changedCollection = data["$trigger"]["collection"] || data["$trigger"]["body"]["collection"];
+        let owner;
+        let repo;
+        let auth;
+        if (changedCollection == "CollectionOne") {
+        	owner = "MyAccount";
+            repo = "MyRepo";
+            auth = "YOUR_GITHUB_PERSONAL_ACCESS_TOKEN";
+        } else if (changedCollection == "CollectionTwo") {
+        	owner = "MyOrganisation";
+            repo = "OrgRepo";
+            auth = "YOUR_GITHUB_PERSONAL_ACCESS_TOKEN";
+        } else {
+        	throw Error(changedCollection + " not configured. Data: " + JSON.stringify(data));
+        }
+    	return {
+            "owner": owner,
+            "repo": repo,
+            "auth": "Bearer " + auth
+        };
+    }
+    ```
+5. Add a `Webhook/Request URL` block after
+   - Method: `POST`
+   - URL: `https://api.github.com/repos/{{$last.owner}}/{{$last.repo}}/actions/workflows/directus.yml/dispatches`
+   - Headers:
+     - `Accept`: `application/vnd.github+json`
+     - `Authorization`: `{{$last.auth}}`
+     - `X-GitHub-Api-Version`: `2022-11-28`
+   - Request Body: `{"ref":"main"}` 
+6. Optionally, add a Log to console with `{{$last}}`
+
+
 
 ## Reference
 ### Options
