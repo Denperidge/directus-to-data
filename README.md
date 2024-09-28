@@ -120,9 +120,7 @@ jobs:
           message: 'CMS update (${{ github.event.repository.updated_at}})'
 
   # Example with a local GitHub Pages deploy workflow
-  # Make sure it has the following configuration so it can be called from a different workflow
-  #   on:
-  #     workflow_call:
+  # Make sure to check the configuration below to ensure it can be called from a different workflow
   deploy:
     uses: ./.github/workflows/deploy.yml
     needs: update-data
@@ -132,6 +130,62 @@ jobs:
       id-token: write
     secrets: inherit  # Pass secrets to called workflow
 ```
+Please see the comments marked with !IMPORTANT in the following example,
+to ensure your deploy CI has the correct settings.
+```yml
+# .github/workflows/deploy.yml
+name: Deploy
+
+on:
+  push:  # Runs on pushes targeting the default branch
+    branches: ["main"]
+  workflow_dispatch: # Allows you to run this workflow manually from the Actions tab
+  # !IMPORTANT Allows this workflow to be called from other workflows
+  workflow_call:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:  #!IMPORTANT Select latest ref instead of event trigger
+          ref: ${{ github.ref }}
+      - uses: actions/setup-node@v4
+          
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        
+      - name: Install pre-requirements
+        run: yarn install
+
+      - name: Build
+        run: yarn build
+        
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Upload entire repository
+          path: 'dist/'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+```
+
 
 ## Reference
 ### Options
