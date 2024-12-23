@@ -2,6 +2,14 @@
 A minimal utility to save a specific Collection from Directus into a local JSON file!
 
 ## How-to
+### Install
+```bash
+# npm
+npm install --save-dev directus-to-data
+# Yarn
+yarn add -D directus-to-data
+```
+
 ### Usage
 #### Usage: CLI
 ```bash
@@ -56,6 +64,26 @@ directusToData({
 You can alternatively configure `directus-to-data` using environment variables.
 See [Reference - Options](#options) or [directusToData.js](directusToData.js) for further documentation.
 
+#### Usage: Scripts
+```json
+# package.json
+{
+  "scripts": {
+    "data": "directus-to-data -c CollectionOne -c CollectionTwo --collection-output src/_data/{{collectionName}}.json",
+    "_schema": "directus-to-data -c CollectionOne -c CollectionTwo --collection-output NO_WRITE --assets-output NO_WRITE",
+    "schema:backup": "yarn _schema --backup-schema .directus.schema.json",
+    "schema:restore": "yarn _schema --restore-schema .directus.schema.json",
+    "schema:apply": "yarn schema:restore --apply-schema"
+  }
+}
+
+# .directus.json
+{
+    "cmsUrl": "https://cms.example.com",
+    "staticToken": "DAE_DOJ?1-edOJQHDS"
+}
+```
+This should probably be used in combination with a [config file](#usage-config-file), as to not unnecessarily put access tokens in your console logs.
 
 ### Specifying fields & downloading assets/files
 - To specify fields for a collection, use the `collectionName:selectorString` syntax.
