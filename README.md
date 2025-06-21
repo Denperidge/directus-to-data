@@ -272,6 +272,7 @@ jobs:
 | path towards file you want to store the collections' schema to. This command ignores collections whose names were not passed | `backupSchema`\*\* | `-b, --backup-schema <filename>` | `BACKUP_SCHEMA` | `null` | `schema.json` |
 | path towards schema you want to apply to the CMS. **This overrides default behaviour.** This command ignores collections whose names were not passed | `restoreSchema`\*\* | `-r, --restore-schema <filename>` | `RESTORE_SCHEMA` | `null` | `schema.json` |
 | for use with --restore-schema/-r. Apply the schema differences to the CMS instead of only displaying the differences | `applySchema`\*\* | `--apply-schema` | `APPLY_SCHEMA` | `false` | `true` |
+| for use with --restore-schema/-r. Applies --force to the SchemaDiff, ignoring schema and deployment Directus version differences | `forceSchema`\*\* | `--force-schema` | `FORCE_SCHEMA` | `false` | `true` |
 | path towards directus-to-data's json config | `configFilename`* | `-i, --config-filename, --config <filename>` | `CONFIG_FILENAME` | .directus.json | ../directus-to-data.json |
 | Optionally, pass a callback function. It will be invoked with callback(data) | `callback`* | N/A | N/A | `function(data){}` | `function(data) { console.log(data); }` |
 | Optionally, pass your own instance of @directus/sdk | `directusSdk`* | N/A | N/A | `require("@directus/sdk")` | `customDirectusSdkInstance` |

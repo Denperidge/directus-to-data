@@ -2,17 +2,10 @@
 # yarn lockfile v1
 
 
-"@directus/sdk@^16.1.1":
-  version "16.1.1"
-  resolved "https://registry.yarnpkg.com/@directus/sdk/-/sdk-16.1.1.tgz#a701fe54a51ccb7e0badb8132a6d05acdbca544c"
-  integrity sha512-vF/vk4PvyndxBE9SwININy3bfqjVPfQ35AXbsvDaJpE5OVclmQGbLqkYP6233GHqVUnveJDDUJssuz/QjeSYyQ==
-  dependencies:
-    "@directus/system-data" "1.1.0"
-
-"@directus/system-data@1.1.0":
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/@directus/system-data/-/system-data-1.1.0.tgz#0c9583a5220b3c0f3ecc7aba51eddee9875b805b"
-  integrity sha512-ETOoTyUXHQJD1NemdlJSADm32GoljQGhZUbg8bB31GAmBnGghTx+E16zzcb1TxRHEqQhV7PfLOrtwEksSTIw8Q==
+"@directus/sdk@^19.1.0":
+  version "19.1.0"
+  resolved "https://registry.yarnpkg.com/@directus/sdk/-/sdk-19.1.0.tgz#aea42c191b40be8806c97ef0420d71b700f1a076"
+  integrity sha512-Nqem9BsvvGyVtAa69mGPtoMoMVkZxdIREdsWvvTzNF4/1XqaFfEiFL7PhtUNfc46/Nufus2+QUKYQbNiAWe3ZA==
 
 commander@^12.1.0:
   version "12.1.0"

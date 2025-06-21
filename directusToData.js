@@ -62,11 +62,12 @@ async function directusRequest(directus, directusOptions, taskLabel, expectValue
             try {
                 const value = await directus.request(directusOptions).catch(async err => {
                     console.error(`Error whilst trying to ${taskLabel}`);
+                    console.error(err);
                     if (firstAttempt) {
                         console.error("Trying again...")
                         resolve(await directusRequest(directus, directusOptions, taskLabel, expectValue, false));
                     } else {
-                        throw err;
+                        reject(err);
                     }
                 });
                 if (expectValue && !value) {
@@ -89,7 +90,7 @@ async function directusRequest(directus, directusOptions, taskLabel, expectValue
                     console.log("Trying again...")
                     return directusRequest(directus, directusOptions, taskLabel, expectValue, false)
                 } else {
-                    throw e;
+                    reject(e);
                 }
             }
         }, 1000 * requestStagger);
@@ -154,6 +155,8 @@ async function directusRequest(directus, directusOptions, taskLabel, expectValue
  * @default null
  * @param applySchema for use with --restore-schema/-r. Apply the schema differences to the CMS instead of only displaying the differences
  * @default false
+ * @param forceSchema for use with --restore-schema/-r. Applies --force to the SchemaDiff, ignoring schema and deployment Directus version differences
+ * @default false
  * @param callback optionally, pass a callback function. It will be invoked with callback(data)
  * @param directusSdk optionally, pass your own instance of @directus/sdk
  */
@@ -169,6 +172,7 @@ module.exports = async function({
     backupSchema="",
     restoreSchema="",
     applySchema=false,
+    forceSchema=false,
     callback=function(data){},
     directusSdk=require("@directus/sdk")
 }) {
@@ -195,6 +199,7 @@ module.exports = async function({
     backupSchema = backupSchema || config["backupSchema"] || env.BACKUP_SCHEMA || null;
     restoreSchema = restoreSchema || config["restoreSchema"] || env.RESTORE_SCHEMA || null;
     applySchema = applySchema || config["applySchema"] || env.APPLY_SCHEMA || false;
+    forceSchema = forceSchema || config["forceSchema"] || env.FORCE_SCHEMA || false;
 
     if (!collectionName) {
         console.error("ERROR: directus-to-data requires at least one collection name to be defined");
@@ -235,7 +240,7 @@ module.exports = async function({
 
     if (restoreSchema) {
         const schemaSnapshot = JSON.parse(readFileSync(restoreSchema, {encoding: encoding}))
-        const schemaDiffData = await directusRequest(directus, schemaDiff(schemaSnapshot), "get schema diff data");
+        const schemaDiffData = await directusRequest(directus, schemaDiff(schemaSnapshot, forceSchema), "get schema diff data");
         
         // Only keep changes for selected collections
         KEYS_TO_FILTER.forEach(keyToFilter => {
@@ -357,6 +362,7 @@ if (require.main == module) {
         .option("-b, --backup-schema <filename>", "path towards file you want to store the collections' schema to. This command ignores collections whose names were not passed")
         .option("-r, --restore-schema <filename>", "path towards schema you want to apply to the CMS. This overrides default behaviour. This command ignores collections whose names were not passed")
         .option("--apply-schema", "for use with --restore-schema/-r. Apply the schema differences to the CMS instead of only displaying the differences")
+        .option("--force-schema", "for use with --restore-schema/-r. Applies --force to the SchemaDiff, ignoring schema and deployment Directus version differences")
         .action((options) => {
             module.exports(options);
         });

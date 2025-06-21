@@ -1,4 +1,4 @@
-name: Publish npm package
+name: Publish npm package & GitHub Release
 
 on:
   push:
@@ -11,26 +11,26 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - run: yarn install --immutable
 
-      - uses: ncipollo/release-action@v1.12.0
+      - uses: ncipollo/release-action@v1
         with:
           artifacts: directusToData.js
 
   npm-publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           registry-url: https://registry.npmjs.org/
 
       - run: yarn install --immutable
