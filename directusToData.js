@@ -47,9 +47,15 @@ function findImagesInDirectusData(object, foundImages=[]) {
     if (keys.includes("id") && keys.includes("filename_download")) {
         foundImages.push({id: object.id, filename: object.filename_download});
     }
-    for (const [key, value] of Object.entries(object)) {
-        if (value && value.constructor === Object) {
-            foundImages = findImagesInDirectusData(value, foundImages);
+    for (const value of Object.values(object)) {
+        if (value) {
+            if (value.constructor === Object) {
+               foundImages = findImagesInDirectusData(value, foundImages);
+            } else if (value.constructor === Array) {
+                for (const entry of value) {
+                    foundImages = findImagesInDirectusData(entry, foundImages);
+                }
+            }
         }
     }
     return foundImages;
@@ -348,7 +354,7 @@ if (require.main == module) {
     program
         .name("directus-to-data")
         .description("A minimal utility to save a specific Collection from Directus into a local JSON file!")
-        .version("0.7.2")
+        .version("0.8.1")
         .option("-u, --cms-url <url>", "url of your Directus instance. Example value: https://cms.example.com")
         .option("-t, --static-token <token>", "static token for user login")
         .option("-c, --collection-name, --collection <name...>", "name of the collection you want to save locally")
